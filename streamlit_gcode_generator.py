@@ -2,56 +2,122 @@
 import streamlit as st
 import math
 
-st.title("Craft Health G-code Generator (Single / Dual Head)")
+# --- Expanded Product Type + API + Base Mapping ---
+formulations = {
+    "Bupropion": {
+        "product_type": "Biphasic Tablet",
+        "T0": {
+            "base": "R4Ha",
+            "density": 1.10,
+            "dry_loading": 80,
+            "line_width_mm": 0.96,
+            "layer_height_mm": 0.475
+        },
+        "T1": {
+            "base": "R15M",
+            "density": 1.12,
+            "dry_loading": 80,
+            "line_width_mm": 0.96,
+            "layer_height_mm": 0.475
+        },
+        "shape": "Cylinder",
+        "diameter_cm": 1.2,
+        "height_cm": 0.421,
+        "default_dose_mg": 240
+    },
+    "Melatonin": {
+        "product_type": "Rapid Dissolve Tablet (RDT)",
+        "T0": {
+            "base": "PEG6000/Mannitol",
+            "density": 0.95,
+            "dry_loading": 10,
+            "line_width_mm": 0.8,
+            "layer_height_mm": 0.4
+        },
+        "shape": "Caplet",
+        "diameter_cm": 0.8,
+        "height_cm": 0.3,
+        "default_dose_mg": 3
+    },
+    "Progesterone": {
+        "product_type": "Lozenge",
+        "T0": {
+            "base": "Isomalt-Glycerin",
+            "density": 1.20,
+            "dry_loading": 15,
+            "line_width_mm": 1.0,
+            "layer_height_mm": 0.4
+        },
+        "shape": "Cylinder",
+        "diameter_cm": 1.4,
+        "height_cm": 0.5,
+        "default_dose_mg": 100
+    },
+    "Naltrexone": {
+        "product_type": "Sublingual Fast-Melt",
+        "T0": {
+            "base": "Xylitol-MCC-CCS",
+            "density": 0.85,
+            "dry_loading": 7,
+            "line_width_mm": 0.75,
+            "layer_height_mm": 0.35
+        },
+        "shape": "Disc",
+        "diameter_cm": 1.0,
+        "height_cm": 0.25,
+        "default_dose_mg": 4.5
+    }
+}
 
-# --- Step 1: Input Parameters ---
-st.header("🧪 Paste & Dose Info")
-paste_density = st.number_input("Paste Density (g/cm³)", min_value=0.001, max_value=3.0, value=1.0, step=0.01)
-api_loading = st.number_input("API Dry Loading (%)", min_value=0.1, max_value=100.0, value=50.0, step=0.1)
-label_claim = st.number_input("Label Claim (mg)", min_value=1, max_value=2000, value=500, step=1)
+product_types = sorted(set([v["product_type"] for v in formulations.values()]))
 
-# --- Step 2: Tablet Geometry ---
-st.header("📐 Tablet Geometry")
-shape = st.selectbox("Tablet Shape", ["Cylinder", "Caplet"])
+# --- UI Layout ---
+st.title("Craft Health G-code Generator v2")
 
-if shape == "Cylinder":
-    height_cm = st.number_input("Height (cm)", min_value=0.01, max_value=1.0, value=0.3, step=0.01)
-    diameter_cm = st.number_input("Diameter (cm)", min_value=0.01, max_value=1.0, value=0.6, step=0.01)
-    radius_cm = diameter_cm / 2
-    geo_volume_cm3 = math.pi * (radius_cm ** 2) * height_cm
+selected_product_type = st.selectbox("Select Product Type", product_types)
+filtered_apis = [api for api, data in formulations.items() if data["product_type"] == selected_product_type]
+selected_api = st.selectbox("Select API", filtered_apis)
+
+f = formulations[selected_api]
+dose = st.number_input("Select Strength (mg)", value=f["default_dose_mg"], min_value=1)
+
+shape = f.get("shape", "Cylinder")
+diameter_cm = f.get("diameter_cm", 1.0)
+height_cm = f.get("height_cm", 0.3)
+st.markdown(f"**Shape**: {shape} — Diameter: {diameter_cm} cm, Height: {height_cm} cm")
+
+dual_head = "T1" in f
+num_lines = 4
+
+if shape == "Cylinder" or shape == "Disc":
+    geo_volume_cm3 = math.pi * ((diameter_cm / 2) ** 2) * height_cm
 else:
-    width_cm = st.number_input("Width (cm)", min_value=0.01, max_value=1.0, value=0.6, step=0.01)
-    length_cm = st.number_input("Length (cm)", min_value=0.01, max_value=2.0, value=1.5, step=0.01)
-    height_cm = st.number_input("Height (cm)", min_value=0.01, max_value=1.0, value=0.5, step=0.01)
-    rectangle_area = width_cm * (length_cm - width_cm)
-    semicircle_area = (math.pi * (width_cm / 2) ** 2)
-    geo_volume_cm3 = (rectangle_area + semicircle_area) * height_cm
+    geo_volume_cm3 = 1.0  # placeholder
 
-# --- Step 3: Slicing & Print Head Settings ---
-st.header("⚙️ Slicing & Tool Settings")
-nozzle_diameter_mm = st.number_input("Nozzle Diameter (mm)", min_value=0.1, max_value=1.0, value=0.5, step=0.05)
-layer_height_mm = st.number_input("Layer Height (mm)", min_value=0.05, max_value=1.0, value=0.4, step=0.05)
-num_lines = st.number_input("Lines per Layer", min_value=1, max_value=20, value=4, step=1)
-dual_head = st.checkbox("Use Dual Print Heads (T0 + T1)", value=False)
+if dual_head:
+    avg_density = (f["T0"]["density"] + f["T1"]["density"]) / 2
+    avg_loading = (f["T0"]["dry_loading"] + f["T1"]["dry_loading"]) / 2
+    line_width_mm = (f["T0"]["line_width_mm"] + f["T1"]["line_width_mm"]) / 2
+    layer_height_mm = (f["T0"]["layer_height_mm"] + f["T1"]["layer_height_mm"]) / 2
+else:
+    t0 = f["T0"]
+    avg_density = t0["density"]
+    avg_loading = t0["dry_loading"]
+    line_width_mm = t0["line_width_mm"]
+    layer_height_mm = t0["layer_height_mm"]
 
-# --- Step 4: Calculations ---
-required_volume_cm3 = (label_claim / 1000) / (api_loading / 100 * paste_density)
-match_status = "✅ OK" if geo_volume_cm3 >= required_volume_cm3 else "❌ TOO SMALL"
-line_width_mm = (width_cm * 10) / num_lines if shape == "Caplet" else (diameter_cm * 10) / num_lines
+required_volume_cm3 = (dose / 1000) / (avg_loading / 100 * avg_density)
+total_extrusion_mm3 = required_volume_cm3 * 1000
 num_layers = int((height_cm * 10) / layer_height_mm)
 total_lines = num_layers * num_lines
-total_extrusion_mm3 = required_volume_cm3 * 1000
-e_per_line = round(total_extrusion_mm3 / total_lines, 4) if total_lines > 0 else 0
+e_per_line = round(total_extrusion_mm3 / total_lines, 4)
 
-# --- Step 5: Upload Template ---
-st.header("🗂 Upload G-code Path Template")
-uploaded_file = st.file_uploader("Upload template (no E values)", type=["gcode", "txt"])
+uploaded_file = st.file_uploader("Upload G-code Path Template", type=["gcode", "txt"])
 
 if uploaded_file:
     gcode_lines = uploaded_file.read().decode("utf-8").splitlines()
     modified_lines = []
 
-    # Header
     modified_lines.append("T0 ;must be in tool 0 state")
     modified_lines.append(";Begin print table index:-1  Parameter offset x18  y18")
     modified_lines.append("G21")
@@ -59,17 +125,16 @@ if uploaded_file:
     modified_lines.append("M83")
     modified_lines.append("G1 F900")
 
-    # G-code injection
     extrusion = 0.0
-    injected_count = 0
     switch_point = total_lines // 2 if dual_head else total_lines + 1
-    current_tool = "T0"
+    injected = 0
+    tool_head = "T0"
 
     for i, line in enumerate(gcode_lines):
         stripped = line.strip()
         if stripped.startswith("G1") and ("X" in stripped or "Y" in stripped):
-            if dual_head and injected_count == switch_point:
-                current_tool = "T1"
+            if dual_head and injected == switch_point:
+                tool_head = "T1"
                 modified_lines.append("T1 ;switch to second head")
                 modified_lines.append("G1 F900")
 
@@ -77,14 +142,11 @@ if uploaded_file:
             if "E" in stripped:
                 stripped = stripped.split("E")[0].strip()
             modified_lines.append(f"{stripped} E{round(extrusion, 4)}")
-            injected_count += 1
+            injected += 1
         else:
             modified_lines.append(stripped)
 
-    st.success(f"Injected E values into {injected_count} movement lines.")
-
-    final_code = "\n".join(modified_lines)
-    st.download_button("📥 Download Craft-Ready G-code", data=final_code, file_name="crafthealth_ready_dual.gcode")
-
-    st.subheader("🔎 Preview")
-    st.code("\n".join(modified_lines[:30]), language="gcode")
+    st.success(f"{injected} extrusion lines updated.")
+    st.download_button("📥 Download G-code", data="\n".join(modified_lines), file_name="generated_gcode_v2.gcode")
+    st.subheader("🔍 Preview")
+    st.code("\n".join(modified_lines[:25]), language="gcode")
