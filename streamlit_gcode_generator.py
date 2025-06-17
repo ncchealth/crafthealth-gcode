@@ -2,7 +2,7 @@
 import streamlit as st
 import math
 
-st.title("Craft Health G-code Generator (Craft-Ready Output)")
+st.title("Craft Health G-code Generator (Single / Dual Head)")
 
 # --- Step 1: Input Parameters ---
 st.header("🧪 Paste & Dose Info")
@@ -27,11 +27,12 @@ else:
     semicircle_area = (math.pi * (width_cm / 2) ** 2)
     geo_volume_cm3 = (rectangle_area + semicircle_area) * height_cm
 
-# --- Step 3: Slicing & Tool Settings ---
-st.header("⚙️ Slicing & Nozzle Settings")
+# --- Step 3: Slicing & Print Head Settings ---
+st.header("⚙️ Slicing & Tool Settings")
 nozzle_diameter_mm = st.number_input("Nozzle Diameter (mm)", min_value=0.1, max_value=1.0, value=0.5, step=0.05)
 layer_height_mm = st.number_input("Layer Height (mm)", min_value=0.05, max_value=1.0, value=0.4, step=0.05)
 num_lines = st.number_input("Lines per Layer", min_value=1, max_value=20, value=4, step=1)
+dual_head = st.checkbox("Use Dual Print Heads (T0 + T1)", value=False)
 
 # --- Step 4: Calculations ---
 required_volume_cm3 = (label_claim / 1000) / (api_loading / 100 * paste_density)
@@ -42,15 +43,15 @@ total_lines = num_layers * num_lines
 total_extrusion_mm3 = required_volume_cm3 * 1000
 e_per_line = round(total_extrusion_mm3 / total_lines, 4) if total_lines > 0 else 0
 
-# --- Step 5: G-code Template ---
-st.header("🗂 Upload G-code Path Template (X/Y/Z lines only)")
+# --- Step 5: Upload Template ---
+st.header("🗂 Upload G-code Path Template")
 uploaded_file = st.file_uploader("Upload template (no E values)", type=["gcode", "txt"])
 
 if uploaded_file:
     gcode_lines = uploaded_file.read().decode("utf-8").splitlines()
     modified_lines = []
 
-    # Craft Health header
+    # Header
     modified_lines.append("T0 ;must be in tool 0 state")
     modified_lines.append(";Begin print table index:-1  Parameter offset x18  y18")
     modified_lines.append("G21")
@@ -58,12 +59,20 @@ if uploaded_file:
     modified_lines.append("M83")
     modified_lines.append("G1 F900")
 
-    # Inject E values into movement lines
+    # G-code injection
     extrusion = 0.0
     injected_count = 0
-    for line in gcode_lines:
+    switch_point = total_lines // 2 if dual_head else total_lines + 1
+    current_tool = "T0"
+
+    for i, line in enumerate(gcode_lines):
         stripped = line.strip()
         if stripped.startswith("G1") and ("X" in stripped or "Y" in stripped):
+            if dual_head and injected_count == switch_point:
+                current_tool = "T1"
+                modified_lines.append("T1 ;switch to second head")
+                modified_lines.append("G1 F900")
+
             extrusion += e_per_line
             if "E" in stripped:
                 stripped = stripped.split("E")[0].strip()
@@ -74,9 +83,8 @@ if uploaded_file:
 
     st.success(f"Injected E values into {injected_count} movement lines.")
 
-    # Download button
     final_code = "\n".join(modified_lines)
-    st.download_button("📥 Download Craft-Ready G-code", data=final_code, file_name="crafthealth_ready.gcode")
+    st.download_button("📥 Download Craft-Ready G-code", data=final_code, file_name="crafthealth_ready_dual.gcode")
 
     st.subheader("🔎 Preview")
-    st.code("\n".join(modified_lines[:25]), language="gcode")
+    st.code("\n".join(modified_lines[:30]), language="gcode")
