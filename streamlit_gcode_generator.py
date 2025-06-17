@@ -1,6 +1,7 @@
 
 import streamlit as st
 import math
+import tempfile
 
 st.title("Craft Health G-code Generator")
 
@@ -59,10 +60,35 @@ st.markdown(f"**Lines per Layer:** {num_lines}")
 st.markdown(f"**Total Extrusion Volume:** {total_extrusion_mm3:.1f} mm³")
 st.markdown(f"**E-value per line:** `{e_per_line}`")
 
-# Optional: G-code preview
-st.subheader("🧾 Sample G-code (first 5 lines)")
-gcode_lines = []
-for i in range(1, 6):
-    gcode_lines.append(f"G1 X{i*1.0:.1f} Y{i*1.5:.1f} E{round(i * e_per_line, 4)}")
+# --- Step 6: Upload & Inject G-code ---
+st.header("🗂 Upload G-code Template")
+uploaded_file = st.file_uploader("Upload G-code file (no E values or placeholders)", type=["gcode", "txt"])
 
-st.code("\n".join(gcode_lines), language="gcode")
+if uploaded_file:
+    gcode_lines = uploaded_file.read().decode("utf-8").splitlines()
+    modified_lines = []
+    extrusion_accum = 0.0
+    line_count = 0
+
+    for line in gcode_lines:
+        if line.startswith("G1") and "X" in line and "Y" in line:
+            extrusion_accum += e_per_line
+            if "E" in line:
+                line = line.split("E")[0].strip()
+            modified_lines.append(f"{line} E{round(extrusion_accum, 4)}")
+            line_count += 1
+        else:
+            modified_lines.append(line)
+
+    st.success(f"Modified {line_count} G-code lines with E-values")
+
+    st.subheader("🧾 Preview Modified G-code")
+    st.code("\n".join(modified_lines[:10]), language="gcode")
+
+    # Download option
+    st.download_button(
+        label="📥 Download Final G-code",
+        data="\n".join(modified_lines),
+        file_name="modified_output.gcode",
+        mime="text/plain"
+    )
