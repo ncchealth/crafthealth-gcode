@@ -39,6 +39,7 @@ if page == "Formulation Builder":
     product_type = st.selectbox("Select Product Type", list(default_templates.keys()))
     shape = st.selectbox("Select Shape", ["Round", "Caplet", "Oval"])
     quantity = st.number_input("Enter Quantity to Produce", min_value=1, value=600)
+    head_mode = st.radio("Select Print Head Mode", ["Single Head", "Dual Head"])
 
     st.subheader("Active Ingredients (up to 4)")
     apis = []
@@ -60,7 +61,7 @@ if page == "Formulation Builder":
         excipients = default_templates.get(product_type, [])
         excipient_df = pd.DataFrame(excipients)
         total_api_weight = api_df["total_mg"].sum()
-        total_batch_weight = total_api_weight / 0.25  # assume APIs are 25% of total
+        total_batch_weight = total_api_weight / 0.25
         excipient_df["total_mg"] = (excipient_df["percentage"] / 100) * total_batch_weight
         excipient_df["ingredient_type"] = "Excipient"
 
@@ -72,7 +73,53 @@ if page == "Formulation Builder":
         st.success("✅ Formula generated!")
         st.dataframe(final_df)
 
-        # PDF Export
+        # --- G-code Generation ---
+        layer_height_mm = 0.3
+        line_width_mm = 0.6
+        capsule_volume_ml = 0.5
+        density_mg_per_ml = final_df["total_mg"].sum() / quantity / capsule_volume_ml
+        line_length_mm = 10
+        e_value = line_width_mm * layer_height_mm * line_length_mm
+
+        gcode_lines = [
+            "; G-code for Craft Health SSE Printer",
+            f"; Product Type: {product_type}",
+            f"; Shape: {shape}",
+            f"; Quantity: {quantity}",
+            f"; Mode: {head_mode}",
+            f"; Paste Density: {density_mg_per_ml:.2f} mg/mL",
+            f"; E value per line: {e_value:.2f}",
+            "",
+            "G21 ; set units to mm",
+            "G90 ; absolute positioning",
+            "G28 ; home all axes",
+            "",
+        ]
+
+        for i in range(quantity):
+            gcode_lines.append(f"; Printing unit {i+1}")
+            gcode_lines.append("G1 X10 Y10 Z0.3 F1500 ; move to start position")
+            if head_mode == "Single Head":
+                gcode_lines.append(f"G1 X20 Y10 E{e_value:.2f} F300 ; print line - Head 1")
+            else:
+                gcode_lines.append(f"T0 ; select tool 0")
+                gcode_lines.append(f"G1 X20 Y10 E{e_value/2:.2f} F300 ; print line - Head 1")
+                gcode_lines.append(f"T1 ; select tool 1")
+                gcode_lines.append(f"G1 X20 Y20 E{e_value/2:.2f} F300 ; print line - Head 2")
+            gcode_lines.append("G1 Z5 ; lift nozzle")
+            gcode_lines.append("")
+
+        gcode_lines.append("M104 S0 ; turn off extruder")
+        gcode_lines.append("M140 S0 ; turn off bed")
+        gcode_lines.append("M84 ; disable motors")
+
+        gcode_file = f"{product_type.replace(' ', '_')}_Gcode.gcode"
+        with open(gcode_file, "w") as f:
+            f.write("\n".join(gcode_lines))
+        with open(gcode_file, "rb") as f:
+            st.download_button("🧬 Download G-code", f, file_name=gcode_file)
+
+        # --- PDF Export ---
         class PDF(FPDF):
             def header(self):
                 self.set_font("Arial", "B", 14)
