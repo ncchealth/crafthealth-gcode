@@ -72,7 +72,6 @@ if page == "Formulation Builder":
                 api_df[["name", "percentage", "total_mg", "ingredient_type"]],
                 excipient_df[["name", "percentage", "total_mg", "ingredient_type"]]
             ]).reset_index(drop=True)
-
         else:
             final_df = api_df[["name", "percentage", "total_mg", "ingredient_type"]]
             st.warning("No excipients defined for this product type.")
@@ -122,8 +121,7 @@ if page == "Formulation Builder":
 
         gcode_file = f"{product_type.replace(' ', '_')}_Gcode.gcode"
         with open(gcode_file, "w") as f:
-            f.write("
-".join(gcode_lines))
+            f.write("\n".join(gcode_lines))
         with open(gcode_file, "rb") as f:
             st.download_button("🧬 Download G-code", f, file_name=gcode_file)
 
