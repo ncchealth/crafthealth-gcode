@@ -77,6 +77,12 @@ if page == "Formulation Builder":
     generate_clicked = st.button("Generate Formula")
 
 if generate_clicked and apis:
+    # Create final_df here
+    # ...
+    st.session_state['final_df'] = final_df
+    # etc...
+
+if generate_clicked and apis:
     # ... your formula and gcode creation logic ...
     st.session_state['final_df'] = final_df
     st.session_state['gcode'] = gcode
