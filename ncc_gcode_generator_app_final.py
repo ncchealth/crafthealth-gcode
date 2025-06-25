@@ -141,9 +141,9 @@ if 'final_df' in st.session_state:
     unit_volume = required_unit_weight / density_mg_per_ml
     e_value = line_width * layer_height * 10
 
-        gcode = [
-            "; G-code for Craft Health SSE Printer",
-            f"; Type: {product_type} | Shape: {shape} | Qty: {quantity} | Scaled Unit Size: {required_unit_weight:.1f} mg",
+    gcode = [
+        "; G-code for Craft Health SSE Printer",
+        f"; Type: {product_type} | Shape: {shape} | Qty: {quantity} | Scaled Unit Size: {required_unit_weight:.1f} mg",
             "G21", "G90", "G28", ""
         ]
 
