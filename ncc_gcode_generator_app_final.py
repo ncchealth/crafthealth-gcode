@@ -125,7 +125,7 @@ if page == "Formulation Builder":
 
         gcode += ["M104 S0", "M140 S0", "M84"]
 
-        gcode_path = f"/mnt/data/{product_type.replace(' ', '_')}_Gcode.gcode"
+        gcode_path = f"{product_type.replace(' ', '_')}_Gcode.gcode"
         with open(gcode_path, "w") as f:
             f.write("\n".join(gcode))
         with open(gcode_path, "rb") as f:
@@ -157,7 +157,7 @@ if page == "Formulation Builder":
         pdf = PDF()
         pdf.add_page()
         pdf.table(final_df)
-        pdf_path = f"/mnt/data/{product_type.replace(' ', '_')}_Formulation.pdf"
+        pdf_path = f"{product_type.replace(' ', '_')}_Formulation.pdf"
         pdf.output(pdf_path)
         with open(pdf_path, "rb") as f:
             st.download_button("📄 Download PDF Formulation", f, file_name=pdf_path.split("/")[-1])
