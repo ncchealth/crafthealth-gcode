@@ -147,17 +147,17 @@ if 'final_df' in st.session_state:
             "G21", "G90", "G28", ""
         ]
 
-        for i in range(quantity):
-            gcode.append(f"; Unit {i+1}")
-            gcode.append("G1 X10 Y10 Z0.3 F1500")
-            if head_mode == "Single Head":
-                gcode.append(f"G1 X20 Y10 E{e_value:.2f} F300")
-            else:
-                gcode.append("T0")
-                gcode.append(f"G1 X20 Y10 E{e_value/2:.2f} F300")
-                gcode.append("T1")
-                gcode.append(f"G1 X20 Y20 E{e_value/2:.2f} F300")
-            gcode.append("G1 Z5")
+    for i in range(quantity):
+        gcode.append(f"; Unit {i+1}")
+        gcode.append("G1 X10 Y10 Z0.3 F1500")
+        if head_mode == "Single Head":
+            gcode.append(f"G1 X20 Y10 E{e_value:.2f} F300")
+        else:
+            gcode.append("T0")
+            gcode.append(f"G1 X20 Y10 E{e_value/2:.2f} F300")
+            gcode.append("T1")
+            gcode.append(f"G1 X20 Y20 E{e_value/2:.2f} F300")
+        gcode.append("G1 Z5")
 
         gcode += ["M104 S0", "M140 S0", "M84"]
 
@@ -168,14 +168,14 @@ if 'final_df' in st.session_state:
             st.download_button("🧬 Download G-code", f, file_name=gcode_path.split("/")[-1])
 
         # --- PDF Output ---
-        class PDF(FPDF):
-            def header(self):
+    class PDF(FPDF):
+        def header(self):
                 self.set_font("Arial", "B", 14)
                 self.cell(0, 10, f"{product_type} - Formulation Worksheet", ln=True, align="C")
                 self.set_font("Arial", "", 10)
                 self.cell(0, 10, f"Date: {datetime.today().strftime('%d %b %Y')} | Qty: {quantity} | Unit Size: {required_unit_weight:.1f} mg", ln=True, align="C")
                 self.ln(10)
-            def table(self, df):
+        def table(self, df):
                 self.set_font("Arial", "B", 10)
                 self.cell(50, 10, "Ingredient", 1)
                 self.cell(30, 10, "Type", 1)
