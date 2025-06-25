@@ -134,12 +134,12 @@ if 'final_df' in st.session_state:
     pdf_path = f"{product_type.replace(' ', '_')}_Formulation.pdf"
     st.download_button("📄 Download PDF Formulation", pdf_output, file_name=pdf_path, mime="application/pdf")
 
-        # --- G-code Generation ---
-        layer_height = 0.3
-        line_width = 0.6
-        density_mg_per_ml = 1200
-        unit_volume = required_unit_weight / density_mg_per_ml
-        e_value = line_width * layer_height * 10
+    # --- G-code Generation ---
+    layer_height = 0.3
+    line_width = 0.6
+    density_mg_per_ml = 1200
+    unit_volume = required_unit_weight / density_mg_per_ml
+    e_value = line_width * layer_height * 10
 
         gcode = [
             "; G-code for Craft Health SSE Printer",
