@@ -6,11 +6,9 @@ from fpdf import FPDF
 
 # --- App Configuration ---
 st.set_page_config(page_title="NCC G-code Generator", layout="wide")
-
-# --- Admin Configuration ---
 ADMIN_PASSWORD = "nccadmin"
 
-# --- Max API Carry Capacity (% w/w) ---
+# --- Max API Load (% w/w) by product type ---
 api_limits = {
     "Rapid Dissolve Tablet (RDT)": 0.20,
     "Fast Melt": 0.15,
@@ -18,7 +16,7 @@ api_limits = {
     "Biphasic Tablet": 0.25
 }
 
-# --- Default Excipients by Product Type ---
+# --- Default excipient bases ---
 base_templates = {
     "Rapid Dissolve Tablet (RDT)": [
         {"name": "Mannitol", "percentage": 45},
@@ -75,95 +73,54 @@ if page == "Formulation Builder":
             apis.append({"name": name, "strength": strength})
 
     generate_clicked = st.button("Generate Formula")
+    if generate_clicked and apis:
+        api_df = pd.DataFrame(apis)
+        total_api_mg = api_df["strength"].sum()
+        max_percent = api_limits[product_type]
+        required_unit_weight = total_api_mg / max_percent
+        total_batch_weight = required_unit_weight * quantity
 
-if generate_clicked and apis:
-    # Create final_df here
-    # ...
-    st.session_state['final_df'] = final_df
-    # etc...
+        api_df["total_mg"] = api_df["strength"] * quantity
+        api_df["percentage"] = (api_df["strength"] / required_unit_weight) * 100
+        api_df["ingredient_type"] = "API"
 
-if generate_clicked and apis:
-    # ... your formula and gcode creation logic ...
-    st.session_state['final_df'] = final_df
-    st.session_state['gcode'] = gcode
-    st.session_state['required_unit_weight'] = required_unit_weight
-    st.session_state['product_type'] = product_type
-    st.session_state['shape'] = shape
-    st.session_state['quantity'] = quantity
-    st.session_state['head_mode'] = head_mode
+        excipients = base_templates[product_type]
+        excipient_df = pd.DataFrame(excipients)
+        excipient_df["total_mg"] = (excipient_df["percentage"] / 100) * total_batch_weight
+        excipient_df["ingredient_type"] = "Excipient"
 
-# Show results and download buttons if formula has been generated
-if 'final_df' in st.session_state:
-    final_df = st.session_state['final_df']
-    gcode = st.session_state['gcode']
-    required_unit_weight = st.session_state['required_unit_weight']
-    product_type = st.session_state['product_type']
-    shape = st.session_state['shape']
-    quantity = st.session_state['quantity']
-    head_mode = st.session_state['head_mode']
+        final_df = pd.concat([
+            api_df[["name", "percentage", "total_mg", "ingredient_type"]],
+            excipient_df[["name", "percentage", "total_mg", "ingredient_type"]]
+        ]).reset_index(drop=True)
 
-    st.success(f"✅ Formula generated! Each unit scaled to {required_unit_weight:.1f} mg.")
-    st.dataframe(final_df)
+        st.success(f"✅ Formula generated! Each unit scaled to approx. {required_unit_weight:.1f} mg to allow API content.")
+        st.dataframe(final_df)
 
-    # --- G-code Download Button ---
-    gcode_path = f"{product_type.replace(' ', '_')}_Gcode.gcode"
-    gcode_str = "\n".join(gcode)
-    st.download_button("🧬 Download G-code", gcode_str, file_name=gcode_path)
+        # --- G-code ---
+        layer_height = 0.3
+        line_width = 0.6
+        density_mg_per_ml = 1200
+        unit_volume = required_unit_weight / density_mg_per_ml
+        e_value = line_width * layer_height * 10
 
-    # --- PDF Output and Download Button ---
-    class PDF(FPDF):
-        def header(self):
-            self.set_font("Arial", "B", 14)
-            self.cell(0, 10, f"{product_type} - Formulation Worksheet", ln=True, align="C")
-            self.set_font("Arial", "", 10)
-            self.cell(0, 10, f"Date: {datetime.today().strftime('%d %b %Y')} | Qty: {quantity} | Unit Size: {required_unit_weight:.1f} mg", ln=True, align="C")
-            self.ln(10)
-        def table(self, df):
-            self.set_font("Arial", "B", 10)
-            self.cell(50, 10, "Ingredient", 1)
-            self.cell(30, 10, "Type", 1)
-            self.cell(30, 10, "%", 1)
-            self.cell(40, 10, "Total (mg)", 1)
-            self.ln()
-            self.set_font("Arial", "", 10)
-            for _, row in df.iterrows():
-                self.cell(50, 10, row["name"], 1)
-                self.cell(30, 10, row["ingredient_type"], 1)
-                self.cell(30, 10, f"{row['percentage']:.2f}", 1)
-                self.cell(40, 10, f"{row['total_mg']:.1f}", 1)
-                self.ln()
-
-    pdf = PDF()
-    pdf.add_page()
-    pdf.table(final_df)
-    pdf_output = pdf.output(dest="S").encode('latin1')
-    pdf_path = f"{product_type.replace(' ', '_')}_Formulation.pdf"
-    st.download_button("📄 Download PDF Formulation", pdf_output, file_name=pdf_path, mime="application/pdf")
-
-    # --- G-code Generation ---
-    layer_height = 0.3
-    line_width = 0.6
-    density_mg_per_ml = 1200
-    unit_volume = required_unit_weight / density_mg_per_ml
-    e_value = line_width * layer_height * 10
-
-    gcode = [
-        "; G-code for Craft Health SSE Printer",
-        f"; Type: {product_type} | Shape: {shape} | Qty: {quantity} | Scaled Unit Size: {required_unit_weight:.1f} mg",
+        gcode = [
+            "; G-code for Craft Health SSE Printer",
+            f"; Type: {product_type} | Shape: {shape} | Qty: {quantity} | Scaled Unit Size: {required_unit_weight:.1f} mg",
             "G21", "G90", "G28", ""
         ]
 
-    for i in range(quantity):
-        gcode.append(f"; Unit {i+1}")
-        gcode.append("G1 X10 Y10 Z0.3 F1500")
-        if head_mode == "Single Head":
-            gcode.append(f"G1 X20 Y10 E{e_value:.2f} F300")
-        else:
-            gcode.append("T0")
-            gcode.append(f"G1 X20 Y10 E{e_value/2:.2f} F300")
-            gcode.append("T1")
-            gcode.append(f"G1 X20 Y20 E{e_value/2:.2f} F300")
-        gcode.append("G1 Z5")
+        for i in range(quantity):
+            gcode.append(f"; Unit {i+1}")
+            gcode.append("G1 X10 Y10 Z0.3 F1500")
+            if head_mode == "Single Head":
+                gcode.append(f"G1 X20 Y10 E{e_value:.2f} F300")
+            else:
+                gcode.append("T0")
+                gcode.append(f"G1 X20 Y10 E{e_value/2:.2f} F300")
+                gcode.append("T1")
+                gcode.append(f"G1 X20 Y20 E{e_value/2:.2f} F300")
+            gcode.append("G1 Z5")
 
         gcode += ["M104 S0", "M140 S0", "M84"]
 
@@ -171,17 +128,17 @@ if 'final_df' in st.session_state:
         with open(gcode_path, "w") as f:
             f.write("\n".join(gcode))
         with open(gcode_path, "rb") as f:
-            st.download_button("🧬 Download G-code", f, file_name=gcode_path.split("/")[-1])
+            st.download_button("🧬 Download G-code", f, file_name=gcode_path)
 
         # --- PDF Output ---
-    class PDF(FPDF):
-        def header(self):
+        class PDF(FPDF):
+            def header(self):
                 self.set_font("Arial", "B", 14)
                 self.cell(0, 10, f"{product_type} - Formulation Worksheet", ln=True, align="C")
                 self.set_font("Arial", "", 10)
                 self.cell(0, 10, f"Date: {datetime.today().strftime('%d %b %Y')} | Qty: {quantity} | Unit Size: {required_unit_weight:.1f} mg", ln=True, align="C")
                 self.ln(10)
-        def table(self, df):
+            def table(self, df):
                 self.set_font("Arial", "B", 10)
                 self.cell(50, 10, "Ingredient", 1)
                 self.cell(30, 10, "Type", 1)
@@ -202,13 +159,13 @@ if 'final_df' in st.session_state:
         pdf_path = f"{product_type.replace(' ', '_')}_Formulation.pdf"
         pdf.output(pdf_path)
         with open(pdf_path, "rb") as f:
-            st.download_button("📄 Download PDF Formulation", f, file_name=pdf_path.split("/")[-1])
+            st.download_button("📄 Download PDF Formulation", f, file_name=pdf_path)
 
 elif page == "Admin Panel":
     st.title("🔐 Admin Panel")
     pwd = st.text_input("Enter admin password", type="password")
     if pwd == ADMIN_PASSWORD:
         st.success("Access granted")
-        st.markdown("🚧 Editable product base templates coming soon.")
+        st.markdown("🚧 Editable base templates coming in the next version.")
     else:
         st.warning("Enter password to continue")
