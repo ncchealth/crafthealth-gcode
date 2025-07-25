@@ -129,8 +129,8 @@ if page == "Formulation Builder":
                         g_line += f" D{d_val:.3f}"
                     gcode.append(g_line)
                 gcode.append("G1 E-1 D-1 F1800")
-                gcode.append("G92 E0
-G92 D0")
+                gcode.append("G92 E0")
+                gcode.append("G92 D0")
             gcode.append("G1 Z5 F3000")
 
         gcode.append("M104 S0
