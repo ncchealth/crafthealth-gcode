@@ -133,9 +133,9 @@ if page == "Formulation Builder":
                 gcode.append("G92 D0")
             gcode.append("G1 Z5 F3000")
 
-        gcode.append("M104 S0
-M140 S0
-M84")
+        gcode.append("M104 S0")
+        gcode.append("M140 S0")
+        gcode.append("M84")
 
         gcode_file = "final_output.gcode"
         with open(f"/mnt/data/{gcode_file}", "w") as f:
