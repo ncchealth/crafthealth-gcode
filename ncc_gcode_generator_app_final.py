@@ -1,3 +1,1 @@
-
-# Final corrected app code inserted here (see earlier cell)
-# Due to space, we'll just flag this as placeholder until reloaded.
+# Final working Streamlit app with admin panel and printer-ready G-code will be inserted here.
