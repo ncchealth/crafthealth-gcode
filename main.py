@@ -16,7 +16,7 @@ st.title("💊 CraftHealth G-code Generator")
 init_session_state(st)
 
 # Sidebar navigation
-page = st.sidebar.selectbox("Select page", ["Main", "Admin Panel"])
+page = st.sidebar.selectbox("Navigation", ["Formulation Builder", "Admin Panel"])
 
 if page == "Formulation Builder":
     render_formulation_builder()
