@@ -1,7 +1,7 @@
 # gcode/generator.py
 
 import math
-from gcode.shapes import generate_circle
+from gcode.shapes import generate_circle, generate_oval, generate_caplet
 
 def generate_gcode(
     quantity: int,
@@ -21,6 +21,10 @@ def generate_gcode(
     # Generate shape path
     if shape == "circle":
         path = generate_circle()
+    elif shape == "oval":
+        path = generate_oval()
+    elif shape == "caplet":
+        path = generate_caplet()
     else:
         raise ValueError("Unsupported shape. Add support in shapes.py.")
 
