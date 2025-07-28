@@ -4,6 +4,9 @@ import streamlit as st
 import pandas as pd
 from gcode.generator import generate_gcode
 from utils.pdf_export import generate_pdf
+from utils.logs import log_session
+from gcode.layers import get_layer_heights
+from gcode.tray import get_xy_offset, get_comment
 
 st.set_page_config(page_title="CraftHealth G-code Generator", layout="wide")
 st.title("💊 CraftHealth G-code Generator")
@@ -48,3 +51,12 @@ if st.button("Generate G-code and PDF"):
 
     pdf_bytes = generate_pdf(df, product_name=f"CraftHealth {shape.title()} Tablet", quantity=quantity, unit_weight=unit_weight)
     st.download_button("📄 Download Formulation PDF", pdf_bytes, file_name="formulation.pdf")
+
+    # Log session
+    log_session("logs.csv", {
+        "shape": shape,
+        "quantity": quantity,
+        "head_mode": head_mode,
+        "api_total_mg": total_mg,
+        "unit_weight_mg": unit_weight
+    })
