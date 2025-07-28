@@ -100,9 +100,9 @@ if page == "Formulation Builder":
 
         gcode += ["M104 S0", "M140 S0", "M84"]
 
-        with open("/mnt/data/final_output.gcode", "w") as f:
-            f.write("\n".join(gcode))
-        with open("/mnt/data/final_output.gcode", "rb") as f:
+        with open("final_output.gcode", "w") as f:
+            f.write("\\n".join(gcode))
+        with open("final_output.gcode", "rb") as f:
             st.download_button("⬇️ Download G-code", f, file_name="final_output.gcode")
 
 elif page == "Admin Panel":
