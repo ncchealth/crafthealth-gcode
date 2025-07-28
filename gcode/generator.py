@@ -1,10 +1,12 @@
 # gcode/generator.py
 
 import math
+from gcode.shapes import generate_circle
 
 def generate_gcode(
     quantity: int,
     unit_volume_mm3: float,
+    shape: str = "circle",
     layer_height: float = 0.3,
     tablet_height: float = 3.6,
     line_width: float = 0.6,
@@ -12,23 +14,20 @@ def generate_gcode(
     spacing: float = 24.0
 ) -> str:
     """
-    Generate Craft Health-compatible G-code for circular tablets.
+    Generate Craft Health-compatible G-code for a given shape.
     """
-    radius = 6.0
-    segments = 16
     num_layers = int(tablet_height / layer_height)
 
-    # Generate circle path
-    circle_path = [
-        (radius * math.cos(2 * math.pi * i / segments),
-         radius * math.sin(2 * math.pi * i / segments))
-        for i in range(segments + 1)
-    ]
+    # Generate shape path
+    if shape == "circle":
+        path = generate_circle()
+    else:
+        raise ValueError("Unsupported shape. Add support in shapes.py.")
 
     # Calculate scaling factor to match unit volume
     perim = sum(
-        math.dist(circle_path[i], circle_path[i + 1])
-        for i in range(len(circle_path) - 1)
+        math.dist(path[i], path[i + 1])
+        for i in range(len(path) - 1)
     )
     layer_volume = perim * line_width * layer_height
     total_path_volume = layer_volume * num_layers
@@ -59,10 +58,10 @@ def generate_gcode(
             z = (layer + 1) * layer_height
             gcode.append(f"G1 Z{z:.2f} F1500")
 
-            for j in range(len(circle_path) - 1):
-                x1 = offset_x + circle_path[j+1][0]
-                y1 = offset_y + circle_path[j+1][1]
-                dist = math.dist(circle_path[j], circle_path[j+1])
+            for j in range(len(path) - 1):
+                x1 = offset_x + path[j+1][0]
+                y1 = offset_y + path[j+1][1]
+                dist = math.dist(path[j], path[j+1])
                 vol = dist * line_width * layer_height * volume_scale
 
                 e_val = vol if head_mode == "Single Head" else vol / 2
