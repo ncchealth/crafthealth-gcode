@@ -24,33 +24,45 @@ def render_formulation_builder():
             apis.append({"name": name, "strength": strength})
 
     if st.button("Generate G-code and PDF"):
-        api_df = pd.DataFrame(apis)
-        total_api_mg = api_df["strength"].sum()
-        max_percent = st.session_state.api_limits[product_type]
-        required_unit_weight = total_api_mg / max_percent if max_percent > 0 else 0
-        unit_volume_mm3 = (required_unit_weight / 1200) * 1000
+        if not apis:
+            st.warning("Please enter at least one valid API.")
+            return
 
-        gcode = generate_gcode(
-            quantity=quantity,
-            unit_volume_mm3=unit_volume_mm3,
-            shape=shape,
-            head_mode=head_mode
-        )
-        st.download_button("⬇️ Download G-code", gcode, file_name="crafthealth_output.gcode")
+        try:
+            api_df = pd.DataFrame(apis)
+            total_api_mg = api_df["strength"].sum()
+            max_percent = st.session_state.api_limits.get(product_type, 0.25)
+            required_unit_weight = total_api_mg / max_percent if max_percent > 0 else 0
+            unit_volume_mm3 = (required_unit_weight / 1200) * 1000 if required_unit_weight > 0 else 0
 
-        # Build PDF DataFrame
-        api_df["total_mg"] = api_df["strength"] * quantity
-        api_df["percentage"] = (api_df["strength"] / required_unit_weight) * 100 if required_unit_weight else 0
-        api_df["ingredient_type"] = "API"
+            if required_unit_weight <= 0 or unit_volume_mm3 <= 0:
+                st.error("Calculation error: check API values and product type settings.")
+                return
 
-        pdf_bytes = generate_pdf(api_df, product_name=f"CraftHealth {product_type}", quantity=quantity, unit_weight=required_unit_weight)
-        st.download_button("📄 Download Formulation PDF", pdf_bytes, file_name="formulation.pdf")
+            gcode = generate_gcode(
+                quantity=quantity,
+                unit_volume_mm3=unit_volume_mm3,
+                shape=shape,
+                head_mode=head_mode
+            )
+            st.download_button("⬇️ Download G-code", gcode, file_name="crafthealth_output.gcode")
 
-        # Log session
-        log_session("logs.csv", {
-            "shape": shape,
-            "quantity": quantity,
-            "head_mode": head_mode,
-            "api_total_mg": total_api_mg,
-            "unit_weight_mg": required_unit_weight
-        })
+            # Build PDF DataFrame
+            api_df["total_mg"] = api_df["strength"] * quantity
+            api_df["percentage"] = api_df["strength"] / required_unit_weight * 100 if required_unit_weight else 0
+            api_df["ingredient_type"] = "API"
+
+            pdf_bytes = generate_pdf(api_df, product_name=f"CraftHealth {product_type}", quantity=quantity, unit_weight=required_unit_weight)
+            st.download_button("📄 Download Formulation PDF", pdf_bytes, file_name="formulation.pdf")
+
+            # Log session
+            log_session("logs.csv", {
+                "shape": shape,
+                "quantity": quantity,
+                "head_mode": head_mode,
+                "api_total_mg": total_api_mg,
+                "unit_weight_mg": required_unit_weight
+            })
+
+        except Exception as e:
+            st.error(f"Something went wrong: {e}")
