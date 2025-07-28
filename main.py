@@ -7,18 +7,23 @@ from gcode.layers import get_layer_heights
 from gcode.tray import get_xy_offset, get_comment
 from utils.admin_ui import render_admin_panel
 from utils.session_state import init_session_state  # Adjust if needed
-
-# Initialize session state
-init_session_state(st)
+from utils.state import init_session_state
+from utils.builder_ui import render_formulation_builder
+from utils.admin_ui import render_admin_panel
 
 st.set_page_config(page_title="CraftHealth G-code Generator", layout="wide")
 st.title("💊 CraftHealth G-code Generator")
+# Initialize session state
+init_session_state(st)
 
 # Sidebar navigation
 page = st.sidebar.selectbox("Select page", ["Main", "Admin Panel"])
 
-if page == "Admin Panel":
+if page == "Formulation Builder":
+    render_formulation_builder()
+elif page == "Admin Panel":
     render_admin_panel()
+
 else:
     # Main app inputs grouped in a form
     with st.form("input_form"):
