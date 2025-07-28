@@ -1,32 +1,72 @@
+# CraftHealth G-code Generator
 
-# NCC G-code Generator (Craft Health)
+A modular Streamlit app to generate printer-ready G-code and formulation PDFs for CraftHealth's SSE 3D printing system.
 
-This is the updated Streamlit-based app for generating G-code for Craft Health's SSE 3D printer.
+---
 
-## How to Run
+## ✅ Features
+- Supports circular, oval, and caplet tablet shapes
+- Calculates volume-based extrusion for single and dual head printing
+- Outputs Craft-compliant G-code with correct E/D logic and retractions
+- Multi-unit grid layout with XY tray offsetting
+- Admin-panel-ready formulation PDF export
+- Session logging to CSV for traceability
 
-1. Install dependencies:
+---
+
+## 🚀 Getting Started
+
+### 1. Clone the Repo
 ```bash
-pip install streamlit fpdf pandas
+git clone https://github.com/your-org/crafthealth-gcode.git
+cd crafthealth-gcode
 ```
 
-2. Run the app:
+### 2. Install Requirements
 ```bash
-streamlit run ncc_gcode_generator_app_updated.py
+pip install -r requirements.txt
 ```
 
-3. Select:
-- Product Type
-- Shape
-- APIs and strengths
-- Head mode (Single or Dual)
-- Quantity
+### 3. Run the App
+```bash
+streamlit run app/main.py
+```
 
-Then download printer-ready G-code and formulation PDF.
+---
 
-## Structure
+## 🧩 Project Structure
+```
+crafthealth-gcode/
+├── app/
+│   └── main.py               # Streamlit UI
+├── gcode/
+│   ├── generator.py          # G-code logic (layers, heads, offsets)
+│   ├── layers.py             # Z-height + retraction helpers
+│   ├── shapes.py             # Shape path generators
+│   └── tray.py               # XY tray grid logic
+├── utils/
+│   ├── pdf_export.py         # PDF export function
+│   └── logs.py               # Session logger
+├── requirements.txt
+└── README.md
+```
 
-- `ncc_gcode_generator_app_updated.py`: Main Streamlit app
-- `README.md`: This file
+---
 
-Ready for upload to GitHub or local testing.
+## 📦 Deployment
+
+For Streamlit Cloud:
+- Push to GitHub
+- Deploy via [streamlit.io/cloud](https://streamlit.io/cloud)
+
+---
+
+## 🛠 Coming Soon
+- Odd/even biphasic layer support
+- Custom tray layout presets
+- User authentication for shared environments
+
+---
+
+## 🧠 Built for CraftHealth
+With care by the NCC / CraftHealth team to bring flexible, pharmacist-driven manufacturing to life.
