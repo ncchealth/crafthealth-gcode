@@ -8,9 +8,14 @@ from utils.pdf_export import generate_pdf
 from utils.logs import log_session
 from gcode.layers import get_layer_heights
 from gcode.tray import get_xy_offset, get_comment
+from utils.admin_ui import render_admin_panel
 
 st.set_page_config(page_title="CraftHealth G-code Generator", layout="wide")
 st.title("💊 CraftHealth G-code Generator")
+
+# later in your navigation logic:
+if page == "Admin Panel":
+    render_admin_panel()
 
 # Input parameters
 quantity = st.number_input("Quantity of units", min_value=1, value=10)
