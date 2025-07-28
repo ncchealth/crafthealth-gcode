@@ -1,7 +1,9 @@
 # app/main.py
 
 import streamlit as st
+import pandas as pd
 from gcode.generator import generate_gcode
+from utils.pdf_export import generate_pdf
 
 st.set_page_config(page_title="CraftHealth G-code Generator", layout="wide")
 st.title("💊 CraftHealth G-code Generator")
@@ -25,7 +27,7 @@ unit_volume_mm3 = (unit_weight / 1200) * 1000  # 1200 mg/mL density
 st.markdown(f"**Estimated unit weight:** {unit_weight:.1f} mg")
 st.markdown(f"**Target volume per unit:** {unit_volume_mm3:.1f} mm³")
 
-if st.button("Generate G-code"):
+if st.button("Generate G-code and PDF"):
     gcode = generate_gcode(
         quantity=quantity,
         unit_volume_mm3=unit_volume_mm3,
@@ -34,3 +36,15 @@ if st.button("Generate G-code"):
     )
     st.success("G-code generated!")
     st.download_button("⬇️ Download G-code", gcode, file_name="crafthealth_output.gcode")
+
+    # PDF formulation
+    df = pd.DataFrame([
+        {"name": "API 1", "ingredient_type": "API", "percentage": (api1/unit_weight)*100 if unit_weight else 0, "total_mg": api1 * quantity},
+        {"name": "API 2", "ingredient_type": "API", "percentage": (api2/unit_weight)*100 if unit_weight else 0, "total_mg": api2 * quantity},
+        {"name": "API 3", "ingredient_type": "API", "percentage": (api3/unit_weight)*100 if unit_weight else 0, "total_mg": api3 * quantity},
+        {"name": "API 4", "ingredient_type": "API", "percentage": (api4/unit_weight)*100 if unit_weight else 0, "total_mg": api4 * quantity},
+    ])
+    df = df[df.total_mg > 0]  # remove unused
+
+    pdf_bytes = generate_pdf(df, product_name=f"CraftHealth {shape.title()} Tablet", quantity=quantity, unit_weight=unit_weight)
+    st.download_button("📄 Download Formulation PDF", pdf_bytes, file_name="formulation.pdf")
