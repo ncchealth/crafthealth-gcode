@@ -1,3 +1,3 @@
 # streamlit_app.py
 
-from app.main import *
+from main import *
