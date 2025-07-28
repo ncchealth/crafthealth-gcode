@@ -1,5 +1,6 @@
 # app/main.py
 
+init_session_state(st)
 import streamlit as st
 import pandas as pd
 from gcode.generator import generate_gcode
